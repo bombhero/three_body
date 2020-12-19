@@ -3,6 +3,7 @@ import matplotlib.patches as mpatch
 import random
 import numpy as np
 import math
+import time
 
 
 g_val = 6.67e-11
@@ -10,10 +11,12 @@ g_val = 6.67e-11
 
 class FixedStar:
     def __init__(self, w_speed=1.0, w_position=1.0, single_point=None):
-        self.position = np.array([[random.uniform(-7.4e10, 7.4e10), random.uniform(-7.4e10, 7.4e10)]]) * w_position
-        self.speed = np.array([random.uniform(-29783, 29783), random.uniform(-29783, 29783)]) * w_speed
+        # self.position = np.array([[random.uniform(-7.4e10, 7.4e10), random.uniform(-7.4e10, 7.4e10)]]) * w_position
+        # self.speed = np.array([random.uniform(-29783, 29783), random.uniform(-29783, 29783)]) * w_speed
+        self.position = np.array([[(random.random()*2-1)*7.4e10, (random.random()*2-1)*7.4e10]]) * w_position
+        self.speed = np.array([(random.random()*2-1)*29783, (random.random()*2-1)*29783]) * w_speed
         self.acc = np.array([0, 0])
-        self.radius = random.uniform(1, 6.95e8)
+        self.radius = random.random() * 6.95e8
         self.weight = self.calc_weight(self.radius)
         self.existed = True
         if single_point is None:
@@ -62,11 +65,11 @@ class StarGroup:
     def __init__(self, n):
         self.group = []
         self.singular = -1
-        self.group.append(FixedStar(w_position=0.1, w_speed=1))
+        self.group.append(FixedStar(w_position=1, w_speed=1))
         self.group[0].radius = 6.9e8
         self.group[0].weight = self.group[0].calc_weight(self.group[0].radius)
         for idx in range(1, n):
-            self.group.append(FixedStar(single_point=self.group[0].get_position(), w_position=0.1, w_speed=1))
+            self.group.append(FixedStar(single_point=self.group[0].get_position(), w_position=1, w_speed=10))
 
     def __len__(self):
         return len(self.group)
@@ -82,7 +85,7 @@ class StarGroup:
         major_moment = self.group[major_idx].weight * self.group[major_idx].speed
         minor_moment = self.group[minor_idx].weight * self.group[minor_idx].speed
         final_moment = major_moment + minor_moment
-        self.group[major_idx].weight = self.group[major_idx].weight
+        self.group[major_idx].weight = self.group[major_idx].weight + self.group[minor_idx].weight
         self.group[major_idx].radius = self.group[major_idx].calc_radius(self.group[major_idx].weight)
         final_speed = final_moment / self.group[major_idx].weight
         self.group[major_idx].speed = np.array([final_speed[0], final_speed[1]])
@@ -138,29 +141,34 @@ def main():
     ax_relative = fig.add_subplot(1, 2, 2)
     ax_relative.axis('equal')
 
-    star_group = StarGroup(10)
+    star_group = StarGroup(50)
+    show_count = 0
     while star_group.live_star_count() > 1:
-        star_group.next_step(time_inv=60)
-        ax_total.cla()
-        ax_relative.cla()
-        for idx in range(len(star_group)):
-            if not star_group.group[idx].existed:
-                continue
-            position = star_group.group[idx].get_position()
-            ax_total.plot(star_group.group[idx].get_position()[:, 0],
-                          star_group.group[idx].get_position()[:, 1])
-            circle = mpatch.Circle(star_group.group[idx].get_position()[-1, :], star_group.group[idx].radius)
-            ax_total.add_patch(circle)
+        star_group.next_step(time_inv=60*10)
+        if show_count % 100000 == 0:
+            ax_total.cla()
+            ax_relative.cla()
+            for idx in range(len(star_group)):
+                if not star_group.group[idx].existed:
+                    continue
+                position = star_group.group[idx].get_position()
+                ax_total.plot(star_group.group[idx].get_position(1000)[:, 0],
+                              star_group.group[idx].get_position(1000)[:, 1])
+                circle = mpatch.Circle(star_group.group[idx].get_position()[-1, :], star_group.group[idx].radius)
+                ax_total.add_patch(circle)
 
-        for idx in range(len(star_group)):
-            if not star_group.group[idx].existed:
-                continue
-            ax_relative.plot(star_group.group[idx].get_relative_position(n=100000)[:, 0],
-                             star_group.group[idx].get_relative_position(n=100000)[:, 1])
-            circle = mpatch.Circle(star_group.group[idx].get_relative_position()[-1, :], star_group.group[idx].radius)
-            ax_relative.add_patch(circle)
-        plt.show()
-        plt.pause(0.000001)
+            for idx in range(len(star_group)):
+                if not star_group.group[idx].existed:
+                    continue
+                ax_relative.plot(star_group.group[idx].get_relative_position(n=1000)[:, 0],
+                                 star_group.group[idx].get_relative_position(n=1000)[:, 1])
+                circle = mpatch.Circle(star_group.group[idx].get_relative_position()[-1, :],
+                                       star_group.group[idx].radius)
+                ax_relative.add_patch(circle)
+            plt.show()
+            plt.pause(0.000001)
+        else:
+            show_count += 1
     plt.pause(2)
 
 
